@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+setup.cfg
+src/fpmachine/__init__.py
+src/fpmachine/devices.py
+src/fpmachine/models.py
+src/fpmachine/network.py
+src/fpmachine/network_utils.py
+src/fpmachine/utils.py
+src/fpmachine.egg-info/PKG-INFO
+src/fpmachine.egg-info/SOURCES.txt
+src/fpmachine.egg-info/dependency_links.txt
+src/fpmachine.egg-info/top_level.txt
