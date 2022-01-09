@@ -1,3 +1,4 @@
 mach-venv
 .idea
 help.txt
+dist/

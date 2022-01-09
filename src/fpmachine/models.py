@@ -34,10 +34,10 @@ class UserInfo:
                 model.privilege = 3
             else:
                 model.privilege = 0
-            model.password = get_null_term_str(data, 3, 11, encoding)
-            model.name = get_null_term_str(data, 11, 35, encoding)
+            model.password = get_null_term_str(data[3:11], encoding)
+            model.name = get_null_term_str(data[11: 35], encoding)
             model.card_no = struct.unpack("<I", data[35:39])[0]
-            model.person_id = get_null_term_str(data, 48, None, encoding)
+            model.person_id = get_null_term_str(data[48:], encoding)
         return model
 
     def __bytes__(self):
@@ -174,7 +174,7 @@ class AttLog:
         model = AttLog()
         if data:
             model.serial = struct.unpack("<H", data[:2])[0]
-            model.person_id = get_null_term_str(data, 2, 26, encoding)
+            model.person_id = get_null_term_str(data[2:26], encoding)
             model.verify_mode, date, model.in_out, model.work_code = struct.unpack("<BIBH", data[26:34])
             model.att_time = number_to_datetime(date)
             model.encoding = encoding

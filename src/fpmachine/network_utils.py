@@ -6,6 +6,14 @@ from .utils import split_list
 
 class packet(object):
     def __init__(self, data=None, cmd=0, serial=0, payload=b"", secret_key=0xC31E):
+        """
+        initialize network packet either from bytes data or by filling other parameters
+        :param data: packet data in form of bytes
+        :param cmd: command number
+        :param serial: serial number for packet
+        :param payload: payload data carried by packet
+        :param secret_key: session key
+        """
         self._header = b"\x50\x50\x82\x7D"
         self._cmd = cmd
         self._checksum = 0x00
@@ -23,6 +31,12 @@ class packet(object):
                 self._payload = data[16:]
 
     def is_valid(self, check_sum=True, check_size=False):
+        """
+        validate packet response
+        :param check_sum: validate checksum
+        :param check_size: validate size
+        :return: True if valid
+        """
         ret = self._header == b"\x50\x50\x82\x7D"
         if check_size:
             ret &= self._size == len(self._payload) + 8
@@ -52,6 +66,10 @@ class packet(object):
         return self._payload
 
     def __bytes__(self):
+        """
+        return packet in form of data bytes
+        :return: packet as data bytes
+        """
         self._size = len(self.payload or b'') + 8
         output = self._header
         checksum = 0
@@ -64,6 +82,11 @@ class packet(object):
 
     @staticmethod
     def calculate_checksum(input_list):
+        """
+        calculate checksum for input packet data bytes
+        :param input_list: packet in form of bytes
+        :return: 2 byte number
+        """
         _sum = 0
         size = (len(input_list) // 2) * 2
         for x in range(8, size, 2):
@@ -83,10 +106,20 @@ class packet(object):
 
 class DataBuffer(object):
     def __init__(self, encoding: str, raw_buffer: bytes = None):
+        """
+        initialize network data buffer from raw_buffer
+        :param encoding: default encoding
+        :param raw_buffer: data buffer
+        """
         self._data = raw_buffer or b''
         self._encoding = encoding
 
-    def add_leading_len(self, size=4):
+    def add_leading_len(self, size: int = 4):
+        """
+        add length in front of the raw_buffer
+        :param size: size used to represent size either 1, 2, 4
+        :return:
+        """
         if size == 2:
             fmt = "<H"
         elif size == 1:
@@ -95,7 +128,13 @@ class DataBuffer(object):
             fmt = "<I"
         self._data = struct.pack(fmt, len(self._data)) + self._data
     
-    def add_leading(self, val, size=4):
+    def add_leading(self, val: int, size: int = 4):
+        """
+        add leading val in front of raw_buffer
+        :param val: value to add in front of the buffer
+        :param size: size of the value either 1, 2, 4
+        :return:
+        """
         if size == 2:
             fmt = "<H"
         elif size == 1:
@@ -110,19 +149,28 @@ class DataBuffer(object):
 
     def __len__(self):
         """
-        this is different from len(bytes(self)) in that
-        this one return the length of the internal data
-        but the other one return data length + 4
+        return actual length of the internal _data
+        :return: internal _data length
         """
         return len(self._data)
 
     @property
     def data(self):
+        """
+        get internal data
+        :return: internal _data
+        """
         return self._data
         # return self._data[self._start:] if len(self._data) > self._start else []
         # return self._data[self._input_leading:] if len(self._data) > self._input_leading else []
 
     def segment(self, offset, size):
+        """
+        return segment from internal _data as [offset: offset + size]
+        :param offset: start of segment
+        :param size: length of segment
+        :return: segment of the data in form of bytes
+        """
         return self._data[offset: offset + size]
         # return bytes(self)[offset: offset + size]
     # @property
@@ -133,24 +181,40 @@ class DataBuffer(object):
 
     @property
     def op_logs(self):
+        """
+        convert internal buffer to segment each segment represent OpLog object
+        :return: list of OpLog object
+        """
         if len(self) % 16 > 0:
             return None
         return [OpLog.from_bytes(x) for x in split_list(self.data, len(self) // 16)]
 
     @property
     def att_logs(self):
+        """
+        convert internal buffer into segments each segment represent AttLog object
+        :return: list of AttLog object
+        """
         if len(self) % 40 > 0:
             return None
         return [AttLog.from_bytes(x, self._encoding) for x in split_list(self.data, len(self) // 40)]
 
     @property
     def users(self):
+        """
+        convert internal buffer into segments each segment represent UserInfo object
+        :return: list of UserInfo object
+        """
         if len(self.data) % 72 > 0:
             return None
         return [UserInfo.from_bytes(x, self._encoding) for x in split_list(self.data, len(self) // 72)]
     
     @property
     def fps(self):
+        """
+        convert internal buffer into segments each segment represent FpInfo object
+        :return: list of FpInfo object
+        """
         index = 0
         ret = []
         while index < len(self.data):
@@ -162,13 +226,26 @@ class DataBuffer(object):
         return ret
 
     def append(self, part):
+        """
+        append more segment to internal buffer
+        :param part:
+        :return:
+        """
         self._data += part
 
     def __bytes__(self):
+        """
+        return internal data buffer
+        :return:
+        """
         return self._data
         # return struct.pack("<I", len(self.data)) + self.data
 
     def __hash__(self):
+        """
+        create hash from data buffer
+        :return: hash value in form of number
+        """
         a = 0
         # for x in bytes(self):
         for x in self._data:

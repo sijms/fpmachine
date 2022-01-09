@@ -71,15 +71,24 @@ class ClientConnection(object):
         #         raise Exception("unexpected response cmd: {}".format(self._response.cmd))
 
     def send_cmd(self, cmd_name: str, payload: bytes = b'', res_cmd_name: list = None):
-        self._request = packet(cmd=device_cmd[cmd_name], serial=self.serial, secret_key=self._secret_key,
+        self._request = packet(cmd=device_cmd[cmd_name], serial=self._serial, secret_key=self._secret_key,
                                payload=payload)
         self.send()
         self.receive()
         self.verify_response(res_cmd_name)
+        self._serial += 1
 
 
 class ZMM100_TFT(ClientConnection):
     def __init__(self, host: str, port: int, encoding: str, secret_key: int = 0, serial: int = 0):
+        """
+        initialize the device
+        :param host: string that contain ip or dns name of the host
+        :param port: port number
+        :param encoding: default encoding for string->bytes conversion and vise versa
+        :param secret_key: session key default = 0 and this key will be generated from the server
+        :param serial: serial number of the packet starting with 0
+        """
         super().__init__(host, port)
         self._encoding = encoding
         self._connected = (self._socket is not None)
@@ -88,8 +97,12 @@ class ZMM100_TFT(ClientConnection):
         self._enabled: bool = True
 
     def connect(self, comm_key=0):
-        # if self._socket:
-        #     self.disconnect()
+        """
+        do connect. note if comm_Key is wrong connect will return True also
+        but when try to use the device it will panic
+        :param comm_key: password for connection
+        :return: True if success
+        """
         super().connect()
         self._connected = False
         self._secret_key = 0
@@ -103,6 +116,10 @@ class ZMM100_TFT(ClientConnection):
         return self._connected
 
     def disconnect(self):
+        """
+        disconnect the device
+        :return:
+        """
         try:
             if self._connected:
                 self.send_cmd("disconnect")
@@ -115,6 +132,11 @@ class ZMM100_TFT(ClientConnection):
             self._connected = False
 
     def hash_commkey(self, comm_key: int):
+        """
+        hash the comm_key and return 4 bytes
+        :param comm_key: connection password
+        :return: 4 bytes represent the comm_Key hash
+        """
         index = 1
         num = 0
         for _ in range(0x20):
@@ -145,11 +167,16 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("shutdown")
 
     def set_device_prop(self, new_value: bytes, prop_cmd="set_data"):
+        """
+        set some system properties of the device
+        :param new_value: new value
+        :param prop_cmd: set_data or any special command
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd(prop_cmd, new_value)
         self.send_cmd("save_data")
-        # return True
 
     @property
     def id(self):
@@ -413,6 +440,10 @@ class ZMM100_TFT(ClientConnection):
 
     @property
     def database_structure(self):
+        """
+        return database structure (tables)
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("get_table_struct", res_cmd_name=["recv_buff_header"])
@@ -426,7 +457,11 @@ class ZMM100_TFT(ClientConnection):
 
     def get_fp_data(self, user_id: int, finger_id: int, disable_device=True):
         """
-        return byte data of the fingerprint
+        get fingerprint data
+        :param user_id: user serial number
+        :param finger_id: finger id
+        :param disable_device: disable device during the command execution
+        :return: fingerprint data in bytes
         """
         if not self._connected:
             raise Exception("you need to connect to machine first")
@@ -453,6 +488,13 @@ class ZMM100_TFT(ClientConnection):
                 self.enable_device()
 
     def send_file(self, file_name: str, file_data: bytes, disable_device=True):
+        """
+        send file to the device
+        :param file_name: name of the file
+        :param file_data: file content in bytes
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -473,6 +515,13 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("save_data")
 
     def set_user_pic(self, person_id: str, pic_data: bytes, disable_device=True):
+        """
+        set picture of the user
+        :param person_id: string that represent person id
+        :param pic_data: picture data in bytes
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -490,6 +539,12 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("save_data")
 
     def del_user_pic(self, person_id: str, disable_device=True):
+        """
+        delete user picture
+        :param person_id: person id
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -505,6 +560,11 @@ class ZMM100_TFT(ClientConnection):
             self.send_cmd("save_data")
 
     def get_user_pic(self, person_id: str):
+        """
+        return bytes of user picture
+        :param person_id: person id
+        :return: picture data in bytes
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("get_user_pic", person_id.encode(self._encoding) + b".jpg\x00",
@@ -523,22 +583,42 @@ class ZMM100_TFT(ClientConnection):
         return data.payload
 
     def del_op_logs(self):
+        """
+        delete all op logs from the device
+        :return:
+        """
         self.send_cmd("clear_op_log")
         self.send_cmd("save_data")
 
     def del_users(self):
+        """
+        delete all users from the device
+        :return:
+        """
         self.clear_data(0x05)
 
     def del_fps(self):
+        """
+        delete all fingerprints from the device
+        :return:
+        """
         self.clear_data(0x02)
 
     def del_admins(self):
+        """
+        clear all device admins
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("cls_admins")
         self.send_cmd("save_data")
 
     def get_photo_count(self):
+        """
+        return number of photo store in the device
+        :return: number of photo
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("get_photo_count")
@@ -552,6 +632,11 @@ class ZMM100_TFT(ClientConnection):
             raise Exception("unknown response format for photo count")
 
     def get_state(self, disable_device=True):
+        """
+        get the machine state and capacity
+        :param disable_device: disable device during the command execution
+        :return: structure describe machine state and capacity
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -569,6 +654,11 @@ class ZMM100_TFT(ClientConnection):
                 self.enable_device()
 
     def del_att_logs(self, disable_device=True):
+        """
+        clear all attendance logs
+        :param disable_device:
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -583,11 +673,20 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("save_data")
 
     def disable_device(self, time_out_in_sec=0):
+        """
+        disable the device for time period
+        :param time_out_in_sec: number of second to disable the device 0 mean forever until you call enable_device
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("disable", struct.pack("<I", time_out_in_sec))
 
     def enable_device(self):
+        """
+        enable the device
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("enable")
@@ -604,13 +703,24 @@ class ZMM100_TFT(ClientConnection):
         return struct.unpack("<I", self._response.payload)
 
     def get_fps(self, disable_device=True):
+        """
+        return all fingerprints that stored in the device
+        :param disable_device:
+        :return: list of FPInfo struct
+        """
         ret = self._get_data_buffer(0x02000701, disable_device)
         if ret is not None:
             ret.remove_leading()
             return ret.fps
 
     def del_user_face(self, person_id: str, face_id=50, disable_device=True):
-        # ret = False
+        """
+        delete user face
+        :param person_id: person id
+        :param face_id: face id default = 50
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -630,6 +740,13 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("save_data")
 
     def get_user_face(self, person_id: str, face_id=50, disable_device=True):
+        """
+        return face data in bytes
+        :param person_id: person id
+        :param face_id: face id default = 50
+        :param disable_device: disable device during the command execution
+        :return: face data in bytes
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -656,6 +773,14 @@ class ZMM100_TFT(ClientConnection):
                 self.enable_device()
 
     def set_user_face(self, person_id: str, face_data: bytes, face_index=50, disable_device=True):
+        """
+        set user face
+        :param person_id: person id
+        :param face_data: face data in bytes
+        :param face_index: face index default 50
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -687,16 +812,22 @@ class ZMM100_TFT(ClientConnection):
     #             self.enableDevice()
     def set_user(self, user_info: models.UserInfo):
         """
-        It is very important to identify the serial of the user_info object
-        because the machine use this serial to store data thus avoid overriding
-        on user over another one thus please use correct index (serial)
+        set user info at specific serial number
+        :param user_info: contain user information to be set. serial field is the determinant of set position
+        :return:
         """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         self.send_cmd("set_user", bytes(user_info))
 
     def del_fp(self, person_id: str, finger_id: int, disable_device=True):
-        # ret = False
+        """
+        delete fingerprint of a user
+        :param person_id: person id
+        :param finger_id: finger id
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -725,6 +856,11 @@ class ZMM100_TFT(ClientConnection):
         return ret
 
     def _upload_data(self, data: bytes):
+        """
+        upload data to the device it is intermediate function
+        :param data: data to be uploaded in bytes
+        :return:
+        """
         self.send_cmd("recv_buff_header", struct.pack("<I", len(data)))
         self.send_cmd("recv_buff_content", data)
         buffer = DataBuffer(self._encoding, data)
@@ -734,6 +870,12 @@ class ZMM100_TFT(ClientConnection):
             raise Exception("problem in data sending")
 
     def set_fp(self, fp_info: models.FPInfo, disable_device=True):
+        """
+        set fingerprint for a user
+        :param fp_info: fingerprint information special user serial, finger id and fingerprint data in bytes
+        :param disable_device:
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -756,6 +898,12 @@ class ZMM100_TFT(ClientConnection):
         self.send_cmd("save_data")
 
     def set_fps(self, fp_infos: list, disable_device=True):
+        """
+        bulk set of fingerprints in the device
+        :param fp_infos: list of all fingerprints
+        :param disable_device: disable device during the command execution
+        :return:
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -779,7 +927,11 @@ class ZMM100_TFT(ClientConnection):
 
     def get_fp(self, user_id: int, finger_id: int, disable_device=True):
         """
-        return FPInfo record
+        return fingerprint of user
+        :param user_id: user serial
+        :param finger_id: finger index
+        :param disable_device: disable device during the command execution
+        :return: fingerprint data in bytes
         """
         if not self._connected:
             raise Exception("you need to connect to machine first")
@@ -807,24 +959,45 @@ class ZMM100_TFT(ClientConnection):
                 self.enable_device()
 
     def get_users(self, disable_device=True):
+        """
+        get all users
+        :param disable_device: disable device during the command execution
+        :return: list of UserInfo
+        """
         ret = self._get_data_buffer(0x05000901, disable_device)
         if ret is not None:
             ret.remove_leading()
             return ret.users
 
     def get_op_logs(self, disable_device=True):
+        """
+        get all op logs
+        :param disable_device: disable device during the command execution
+        :return: list of OpLog struct
+        """
         ret = self._get_data_buffer(0x2201, disable_device)
         if ret is not None:
             ret.remove_leading()
             return ret.op_logs
 
     def get_att_logs(self, disable_device=True):
+        """
+        get all attendance logs
+        :param disable_device: disable device during the command execution
+        :return: list of AttLog
+        """
         ret = self._get_data_buffer(0x0D01, disable_device)
         if ret is not None:
             ret.remove_leading()
             return ret.att_logs
 
     def _get_data_buffer(self, data_id: int, disable_device=True):
+        """
+        read data buffer from the stream
+        :param data_id: data type to be read
+        :param disable_device: disable device during the command execution
+        :return: DataBuffer object
+        """
         if not self._connected:
             raise Exception("you need to connect to machine first")
         if disable_device:
@@ -874,11 +1047,6 @@ class ZMM100_TFT(ClientConnection):
     @property
     def connected(self):
         return self._connected
-
-    @property
-    def serial(self):
-        self._serial += 1
-        return self._serial - 1
 
 
 class ZMM220_TFT(ZMM100_TFT):

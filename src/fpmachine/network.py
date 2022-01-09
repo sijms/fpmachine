@@ -6,6 +6,10 @@ from .devices import ZMM100_TFT, ZMM220_TFT
 
 class Client(object):
     def __init__(self, device):
+        """
+        initialize a client for a device
+        :param device:
+        """
         self._device = device
 
     def __enter__(self):
@@ -19,12 +23,24 @@ class Client(object):
 
 
 class ZMM100Client(Client):
-    def __init__(self, ip, port, encoding):
+    def __init__(self, ip: str, port: int, encoding: str):
+        """
+        initialize client for ZMM100_TFT device
+        :param ip: ip address or dns name
+        :param port: port number
+        :param encoding: default encoding
+        """
         super().__init__(ZMM100_TFT(ip, port, encoding))
 
 
 class ZMM220Client(Client):
-    def __init__(self, ip, port, encoding):
+    def __init__(self, ip: str, port: int, encoding: str):
+        """
+        initialize client for ZMM220_TFT device
+        :param ip: ip address or dns name
+        :param port: port number
+        :param encoding: default encoding
+        """
         super().__init__(ZMM220_TFT(ip, port, encoding))
 
 # class ServerConnection(threading.Thread):

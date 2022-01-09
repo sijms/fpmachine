@@ -115,12 +115,23 @@ def dump(data):
     return [hex(x) for x in data]
 
 
-def split_list(alist, wanted_parts=1):
+def split_list(alist: bytes, wanted_parts=1):
+    """
+    split a large list into small parts
+    :param alist: mother list
+    :param wanted_parts: number of child list
+    :return: child list created from mother list
+    """
     length = len(alist)
     return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts] for i in range(wanted_parts)]
 
 
-def datetime_to_number(dt):
+def datetime_to_number(dt: datetime):
+    """
+    convert datetime to number
+    :param dt: datetime
+    :return: 4 byte number
+    """
     year = dt.year - 2000
     month = dt.month - 1
     day = dt.day - 1
@@ -141,7 +152,12 @@ def datetime_to_number(dt):
     return temp
 
 
-def number_to_datetime(dword_time):
+def number_to_datetime(dword_time: int):
+    """
+    convert 4 byte number to datetime
+    :param dword_time: 4 byte number
+    :return: datetime object
+    """
     base_number = dword_time
     temp1 = ((base_number * 0x88888889) >> 32) & 0xFFFFFFFF
     temp2 = temp1 >> 5
@@ -174,18 +190,34 @@ def number_to_datetime(dword_time):
     return datetime(year, month, day, hour, minute, second)
 
 
-def datetime_to_bytes(dt):
+def datetime_to_bytes(dt: datetime):
+    """
+    convert datetime to number then pack it into 4 bytes
+    :param dt: datetime
+    :return: 4 bytes
+    """
     return struct.pack("<I", datetime_to_number(dt))
 
 
-def datetime_from_bytes(data):
+def datetime_from_bytes(data: bytes):
+    """
+    unpack bytes to number then convert it to datetime object
+    :param data: data bytes
+    :return: datetime object
+    """
     return number_to_datetime(struct.unpack("<I", data)[0])
 
 
-def get_null_term_str(data, start, end, encoding):
-    temp = data[start:end]
-    if 0 in temp:
-        temp = bytes(temp[:temp.index(0)])
+def get_null_term_str(data, encoding):
+    """
+    extract null terminated string from data
+    :param data: data buffer
+    :param encoding: encoding used to convert bytes to str
+    :return: string
+    """
+    # temp = data[:]
+    if 0 in data:
+        temp = bytes(data[:data.index(0)])
     else:
-        temp = bytes(temp)
+        temp = bytes(data)
     return temp.decode(encoding)
