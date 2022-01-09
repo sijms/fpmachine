@@ -6,6 +6,9 @@ until now 2 model supported and tested ZMM100_TFT and ZMM220_TFT
 ```bash
 pip3 install --upgrade fpmachine
 ```
+# Data Source
+* network analysis 
+* reverse engineering of the driver
 # usage
 ```python
 from fpmachine.devices import ZMM220_TFT
@@ -14,7 +17,7 @@ from fpmachine.devices import ZMM220_TFT
 dev = ZMM220_TFT("192.168.1.3", 4370, "latin-1")
 
 # connect and pass commkey default=0
-dev.connect(2020)
+dev.connect(2022)
 
 # get users
 users = dev.get_users()
